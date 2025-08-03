@@ -28,7 +28,12 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 
-# 2. Report location view
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.template.exceptions import TemplateDoesNotExist
+
+
 @csrf_exempt
 def report_location(request):
     if request.method == "POST":
@@ -42,21 +47,26 @@ def report_location(request):
                     {"error": "Missing latitude or longitude"}, status=400
                 )
 
+            # Convert to float to ensure valid coordinates
+            try:
+                lat = float(lat)
+                lng = float(lng)
+            except (TypeError, ValueError):
+                return JsonResponse(
+                    {"error": "Invalid latitude or longitude format"}, status=400
+                )
+
             # Save to database
             report = DisasterReport.objects.create(
                 latitude=lat, longitude=lng, reported_at=timezone.now()
             )
 
             # Send emergency email
-            send_emergency_alert(lat, lng)
-
-            # Optional: Save all to a JSON file
-            all_reports = DisasterReport.objects.values(
-                "latitude", "longitude", "reported_at"
-            )
-            file_path = os.path.join(settings.BASE_DIR, "location_reports.json")
-            with open(file_path, "w") as f:
-                json.dump(list(all_reports), f, indent=4, default=str)
+            try:
+                send_emergency_alert(lat, lng)
+            except Exception as e:
+                print(f"Failed to send email: {str(e)}")
+                # Continue even if email fails
 
             return JsonResponse({"message": "Location saved successfully"})
 
@@ -69,21 +79,44 @@ def report_location(request):
 def send_emergency_alert(latitude, longitude):
     subject = "🚨 EMERGENCY LOCATION REPORT"
     google_maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
+    current_time = timezone.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    message = render_to_string(
-        "emergency_email.txt",
-        {
-            "latitude": latitude,
-            "longitude": longitude,
-            "maps_link": google_maps_link,
-            "time": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
-        },
-    )
+    # Create plain text message as fallback
+    plain_message = f"""
+EMERGENCY LOCATION ALERT
+
+⚠️ New emergency location reported:
+
+📍 Coordinates:
+Latitude: {latitude}
+Longitude: {longitude}
+
+🗺️ Google Maps Link:
+{google_maps_link}
+
+⏰ Time Reported: {current_time}
+
+Respond immediately!
+"""
+
+    # Try to render template first, fallback to plain text
+    try:
+        message = render_to_string(
+            "emergency_email.txt",
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+                "maps_link": google_maps_link,
+                "time": current_time,
+            },
+        )
+    except TemplateDoesNotExist:
+        message = plain_message
 
     send_mail(
         subject,
         message,
-        "adamssquare4@gmail.com",  # From email
-        ["jerusalem4tech@gmail.com"],  # To email (your email)
+        "adamssquare4@gmail.com",
+        ["jerusalem4tech@gmail.com"],
         fail_silently=False,
     )
