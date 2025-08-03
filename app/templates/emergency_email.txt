@@ -1,0 +1,14 @@
+EMERGENCY LOCATION ALERT
+
+⚠️ New emergency location reported:
+
+📍 Coordinates:
+Latitude: {latitude}
+Longitude: {longitude}
+
+🗺️ Google Maps Link:
+{maps_link}
+
+⏰ Time Reported: {time}
+
+Respond immediately!
